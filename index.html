@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jungle Laser Dino Safari 3D - Front 4-Lane Defense</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050b08;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #fff;
+        }
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* HUD Overlay */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 16px;
+        }
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .hud-card {
+            background: rgba(10, 25, 18, 0.85);
+            border: 1px solid rgba(0, 255, 170, 0.4);
+            border-radius: 12px;
+            padding: 10px 16px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(0, 255, 170, 0.1);
+        }
+        .label {
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #70d6a5;
+            margin-bottom: 2px;
+        }
+        .value {
+            font-size: 24px;
+            font-weight: 900;
+            font-family: monospace;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(0, 255, 170, 0.8);
+        }
+        
+        /* Health & Overheat Bar */
+        .bars-container {
+            width: 220px;
+        }
+        .bar-wrapper {
+            margin-bottom: 6px;
+        }
+        .bar-bg {
+            width: 100%;
+            height: 10px;
+            background: rgba(20, 40, 30, 0.8);
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .bar-fill {
+            height: 100%;
+            width: 100%;
+            transition: width 0.15s ease-out, background-color 0.3s;
+            border-radius: 6px;
+        }
+        #health-bar {
+            background: linear-gradient(90deg, #ff3366, #ff6600, #00ffaa);
+            box-shadow: 0 0 10px #00ffaa;
+        }
+        #heat-bar {
+            background: linear-gradient(90deg, #00ccff, #ffbb00, #ff0044);
+            width: 0%;
+        }
+
+        /* 4 Front Lane Markers HUD Overlay */
+        #lane-overlay {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 800px;
+            display: flex;
+            justify-content: space-around;
+            pointer-events: none;
+            z-index: 4;
+        }
+        .lane-tag {
+            background: rgba(5, 20, 14, 0.7);
+            border: 1px solid rgba(0, 255, 170, 0.5);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-weight: 900;
+            font-size: 13px;
+            color: #70d6a5;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px rgba(0, 255, 170, 0.2);
+        }
+        .lane-tag.active {
+            background: rgba(0, 255, 170, 0.25);
+            border-color: #ffea00;
+            color: #ffea00;
+            transform: scale(1.15);
+            box-shadow: 0 0 15px #ffea00;
+        }
+
+        /* Arcade Red Push Button Console at Bottom */
+        #button-console {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 16px;
+            z-index: 10;
+            pointer-events: auto;
+            background: rgba(10, 20, 15, 0.92);
+            padding: 14px 26px;
+            border-radius: 60px;
+            border: 2px solid rgba(0, 255, 170, 0.4);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 25px rgba(0,255,170,0.25);
+        }
+        .arcade-btn-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        .arcade-btn-label {
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            color: #00ffaa;
+            text-transform: uppercase;
+        }
+        .arcade-red-btn {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #ff5577, #cc0033 60%, #660019);
+            border: 4px solid #ff99aa;
+            box-shadow: 0 8px 0 #440011, 0 10px 20px rgba(0,0,0,0.6), inset 0 2px 5px rgba(255,255,255,0.6);
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 900;
+            font-family: impact, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.08s ease;
+            text-shadow: 0 2px 4px #000;
+        }
+        .arcade-red-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 0 #440011, 0 12px 25px rgba(255,51,102,0.4), inset 0 2px 5px rgba(255,255,255,0.8);
+        }
+        .arcade-red-btn:active, .arcade-red-btn.active {
+            transform: translateY(6px);
+            box-shadow: 0 2px 0 #440011, 0 4px 10px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,0.5);
+            background: radial-gradient(circle at 35% 35%, #ff2255, #990026 60%, #440011);
+            border-color: #ffea00;
+        }
+
+        /* Combo indicator */
+        #combo-popup {
+            position: absolute;
+            top: 35%;
+            right: 12%;
+            font-size: 30px;
+            font-weight: 900;
+            font-style: italic;
+            color: #ffea00;
+            text-shadow: 0 0 15px #ff9900, 2px 2px 0 #000;
+            opacity: 0;
+            transform: scale(0.5) rotate(-5deg);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+        #combo-popup.show {
+            opacity: 1;
+            transform: scale(1.2) rotate(-5deg);
+        }
+
+        /* Floating Damage Indicators */
+        #damage-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 6;
+        }
+        .dmg-text {
+            position: absolute;
+            font-weight: 900;
+            font-size: 24px;
+            color: #ff3366;
+            text-shadow: 0 0 6px #000;
+            animation: floatUp 0.75s ease-out forwards;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.4); }
+        }
+
+        /* Red damage screen vignette */
+        #damage-vignette {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: inset 0 0 100px rgba(255, 0, 55, 0);
+            pointer-events: none;
+            z-index: 4;
+            transition: box-shadow 0.1s ease-out;
+        }
+        #damage-vignette.hit {
+            box-shadow: inset 0 0 120px rgba(255, 0, 55, 0.85);
+        }
+
+        /* Menus */
+        .modal-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(4, 12, 9, 0.88);
+            backdrop-filter: blur(10px);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .menu-box {
+            background: rgba(12, 28, 20, 0.95);
+            border: 2px solid #00ffaa;
+            border-radius: 20px;
+            padding: 36px;
+            max-width: 540px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0, 255, 170, 0.3), inset 0 0 20px rgba(0, 255, 170, 0.1);
+        }
+        h1 {
+            font-size: 34px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #00ffaa, #ffea00, #ff3366);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+        p.subtitle {
+            color: #a0e0c0;
+            font-size: 14px;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+        .btn {
+            background: linear-gradient(135deg, #00ffaa, #009966);
+            color: #050b08;
+            font-weight: 900;
+            font-size: 18px;
+            letter-spacing: 1px;
+            padding: 16px 36px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(0, 255, 170, 0.4);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+        .btn:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 10px 30px rgba(0, 255, 170, 0.6);
+        }
+        .controls-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 20px 0;
+            text-align: left;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            color: #88dfbe;
+        }
+        .controls-info span {
+            color: #fff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <div id="damage-vignette"></div>
+    <div id="damage-container"></div>
+
+    <!-- 4 Front Lane Markers HUD -->
+    <div id="lane-overlay">
+        <div class="lane-tag" id="tag-1">LANE 1</div>
+        <div class="lane-tag" id="tag-2">LANE 2</div>
+        <div class="lane-tag" id="tag-3">LANE 3</div>
+        <div class="lane-tag" id="tag-4">LANE 4</div>
+    </div>
+
+    <!-- HUD Overlay -->
+    <div id="hud">
+        <div class="hud-top">
+            <div class="hud-card bars-container">
+                <div class="bar-wrapper">
+                    <div class="label">JEEP SHIELD / HEALTH</div>
+                    <div class="bar-bg"><div id="health-bar" class="bar-fill"></div></div>
+                </div>
+                <div class="bar-wrapper">
+                    <div class="label">LASER CANNON HEAT</div>
+                    <div class="bar-bg"><div id="heat-bar" class="bar-fill"></div></div>
+                </div>
+            </div>
+
+            <div class="hud-card" style="text-align: right;">
+                <div class="label">SCORE</div>
+                <div id="score-val" class="value">000000</div>
+            </div>
+        </div>
+
+        <div id="combo-popup">COMBO x2!</div>
+    </div>
+
+    <!-- Bottom Red Push-Buttons Console -->
+    <div id="button-console">
+        <div class="arcade-btn-wrapper">
+            <div class="arcade-red-btn" id="btn-1" data-lane="1">1</div>
+            <div class="arcade-btn-label">FAR LEFT</div>
+        </div>
+        <div class="arcade-btn-wrapper">
+            <div class="arcade-red-btn" id="btn-2" data-lane="2">2</div>
+            <div class="arcade-btn-label">MID LEFT</div>
+        </div>
+        <div class="arcade-btn-wrapper">
+            <div class="arcade-red-btn" id="btn-3" data-lane="3">3</div>
+            <div class="arcade-btn-label">MID RIGHT</div>
+        </div>
+        <div class="arcade-btn-wrapper">
+            <div class="arcade-red-btn" id="btn-4" data-lane="4">4</div>
+            <div class="arcade-btn-label">FAR RIGHT</div>
+        </div>
+    </div>
+
+    <!-- Start Screen Modal -->
+    <div id="start-modal" class="modal-overlay">
+        <div class="menu-box">
+            <h1>JUNGLE LASER<br>4-LANE DINO SAFARI</h1>
+            <p class="subtitle">Dinosaurs are charging straight down 4 front lanes! Push the RED Arcade Buttons (1, 2, 3, 4) to aim and blast incoming colorful raptors!</p>
+            
+            <div class="controls-info">
+                <div>Aim & Fire Lane: <span>Buttons 1, 2, 3, 4</span></div>
+                <div>Keyboard Shortcuts: <span>Keys 1, 2, 3, 4</span></div>
+                <div>Continuous Fire: <span>Hold / Tap Buttons</span></div>
+                <div>Fixed Avatar View: <span>100% Forward Facing</span></div>
+            </div>
+
+            <button id="start-btn" class="btn">START SAFARI HUNT</button>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameover-modal" class="modal-overlay hidden">
+        <div class="menu-box">
+            <h1 style="background: linear-gradient(135deg, #ff3366, #ff9900);">JEEP OVERRUN</h1>
+            <p class="subtitle">The front raptor pack reached your vehicle!</p>
+            
+            <div style="margin: 20px 0; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 10px;">
+                <div class="label">FINAL SCORE</div>
+                <div id="final-score" class="value" style="font-size: 38px; color: #ffea00;">0</div>
+                <div id="final-kills" style="margin-top: 8px; font-size: 14px; color: #70d6a5;">Dinos Neutralized: 0</div>
+            </div>
+
+            <button id="restart-btn" class="btn">RETRY HUNT</button>
+        </div>
+    </div>
+
+    <script>
+        // --- AUDIO SYNTHESIZER ---
+        class SoundFX {
+            constructor() { this.ctx = null; }
+            init() {
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            }
+            playLaser() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const now = this.ctx.currentTime;
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(850, now);
+                osc.frequency.exponentialRampToValueAtTime(120, now + 0.12);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            }
+            playRoar() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const mod = this.ctx.createOscillator();
+                const modGain = this.ctx.createGain();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(170, now);
+                osc.frequency.linearRampToValueAtTime(70, now + 0.5);
+                mod.type = 'square';
+                mod.frequency.value = 40;
+                modGain.gain.value = 60;
+                mod.connect(osc.frequency);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(now); mod.start(now);
+                osc.stop(now + 0.5); mod.stop(now + 0.5);
+            }
+            playHit() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(240, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(now); osc.stop(now + 0.1);
+            }
+            playExplosion() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const bufferSize = this.ctx.sampleRate * 0.4;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, now);
+                filter.frequency.linearRampToValueAtTime(50, now + 0.4);
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                noise.connect(filter); filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start(now);
+            }
+        }
+        const sfx = new SoundFX();
+
+        // --- THREE.JS ENGINE SETUP ---
+        let scene, camera, renderer;
+        let clock = new THREE.Clock();
+        
+        let isPlaying = false;
+        let score = 0;
+        let kills = 0;
+        let health = 100;
+        let laserHeat = 0;
+        let isOverheated = false;
+
+        // Front 4 Attack Lanes Target X coordinates
+        // Lane 1: -11 (Far Left), Lane 2: -3.8 (Mid Left), Lane 3: 3.8 (Mid Right), Lane 4: 11 (Far Right)
+        const LANE_X = { 1: -11, 2: -3.8, 3: 3.8, 4: 11 };
+        let activeTargetLane = 2; // Default focused lane
+
+        let jeepHoodGroup, leftTurret, rightTurret;
+        let dinosaurs = [];
+        let lasers = [];
+        let particles = [];
+        let environmentObjects = [];
+
+        // Dynamic Texture Generator for Colorful Striped Raptors (from reference image)
+        function createDinoSkinTexture(baseHex, stripeHex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = baseHex;
+            ctx.fillRect(0, 0, 256, 256);
+            ctx.fillStyle = stripeHex;
+            for (let i = 0; i < 16; i++) {
+                ctx.beginPath();
+                let y = i * 16;
+                ctx.moveTo(0, y);
+                ctx.bezierCurveTo(80, y + 15, 160, y - 15, 256, y + 10);
+                ctx.lineTo(256, y + 22);
+                ctx.bezierCurveTo(160, y - 5, 80, y + 25, 0, y + 10);
+                ctx.closePath();
+                ctx.fill();
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+
+        const yellowSkin = createDinoSkinTexture('#e6cc00', '#111111');
+        const blueSkin = createDinoSkinTexture('#00aaff', '#e6cc00');
+        const redSkin = createDinoSkinTexture('#ff3333', '#220000');
+
+        function initScene() {
+            const container = document.getElementById('game-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x06120c);
+            scene.fog = new THREE.FogExp2(0x06120c, 0.015);
+
+            // FIXED FORWARD CAMERA (NO PIVOTING)
+            camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 200);
+            camera.position.set(0, 3.2, 0);
+            camera.rotation.set(0, 0, 0); // Strictly fixed straight forward (-Z)
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x2d5540, 1.0);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfffaed, 1.2);
+            dirLight.position.set(30, 50, 20);
+            scene.add(dirLight);
+
+            // Build Central Defender Vehicle Hood
+            buildJeepHood();
+
+            // Build Jungle Scenery Track
+            createJungleTrack();
+
+            // Setup Push Buttons & Keyboard Controls
+            setupControls();
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function buildJeepHood() {
+            jeepHoodGroup = new THREE.Group();
+
+            // Hood base plate
+            const hoodGeo = new THREE.BoxGeometry(3.6, 0.4, 3.5);
+            const hoodMat = new THREE.MeshStandardMaterial({ color: 0x1f3027, roughness: 0.4, metalness: 0.7 });
+            const hoodMesh = new THREE.Mesh(hoodGeo, hoodMat);
+            hoodMesh.position.set(0, 1.2, -1.8);
+            jeepHoodGroup.add(hoodMesh);
+
+            // Dashboard
+            const dashGeo = new THREE.BoxGeometry(3.8, 0.6, 0.8);
+            const dashMat = new THREE.MeshStandardMaterial({ color: 0x0a140e, roughness: 0.8 });
+            const dash = new THREE.Mesh(dashGeo, dashMat);
+            dash.position.set(0, 1.8, -0.4);
+            jeepHoodGroup.add(dash);
+
+            // Twin Swiveling Plasma Turrets
+            const createTurret = (xOffset) => {
+                const group = new THREE.Group();
+                group.position.set(xOffset, 1.6, -2.2);
+
+                const base = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.25, 0.3, 0.3, 12),
+                    new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8 })
+                );
+                group.add(base);
+
+                const barrels = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.06, 0.06, 1.2, 8),
+                    new THREE.MeshStandardMaterial({ color: 0x00ffaa, emissive: 0x004422, metalness: 0.9 })
+                );
+                barrels.rotation.x = Math.PI / 2;
+                barrels.position.set(0, 0.15, -0.4);
+                group.add(barrels);
+
+                return group;
+            };
+
+            leftTurret = createTurret(-1.3);
+            rightTurret = createTurret(1.3);
+            jeepHoodGroup.add(leftTurret);
+            jeepHoodGroup.add(rightTurret);
+
+            scene.add(jeepHoodGroup);
+        }
+
+        function createRaptorMesh(type = 'yellow') {
+            const dinoGroup = new THREE.Group();
+            let skinMat = type === 'yellow' ? new THREE.MeshStandardMaterial({ map: yellowSkin }) :
+                         (type === 'blue' ? new THREE.MeshStandardMaterial({ map: blueSkin }) :
+                                            new THREE.MeshStandardMaterial({ map: redSkin }));
+
+            const teethMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const mouthInsideMat = new THREE.MeshBasicMaterial({ color: 0xff1a40 });
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
+
+            // Torso
+            const body = new THREE.Mesh(new THREE.ConeGeometry(0.7, 2.2, 8), skinMat);
+            body.rotation.x = Math.PI / 2.5;
+            body.position.set(0, 1.3, 0);
+            dinoGroup.add(body);
+
+            // Neck & Head
+            const headGroup = new THREE.Group();
+            headGroup.position.set(0, 2.5, -1.1);
+
+            const upperHead = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 1.1), skinMat);
+            upperHead.position.set(0, 0.2, -0.4);
+            headGroup.add(upperHead);
+
+            // Eyes
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), eyeMat);
+            eyeL.position.set(0.26, 0.3, -0.3);
+            const eyeR = eyeL.clone(); eyeR.position.x = -0.26;
+            headGroup.add(eyeL); headGroup.add(eyeR);
+
+            // Jaw (Open Wide)
+            const lowerJawGroup = new THREE.Group();
+            const lowerJawMesh = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.2, 1.0), skinMat);
+            lowerJawMesh.position.set(0, 0, -0.4);
+            lowerJawGroup.add(lowerJawMesh);
+
+            const mouthInside = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.1, 0.8), mouthInsideMat);
+            mouthInside.position.set(0, 0.08, -0.4);
+            lowerJawGroup.add(mouthInside);
+
+            lowerJawGroup.rotation.x = Math.PI / 5;
+            headGroup.add(lowerJawGroup);
+            dinoGroup.add(headGroup);
+
+            // Tail & Legs
+            const tailGroup = new THREE.Group();
+            tailGroup.position.set(0, 1.5, 0.9);
+            const tail1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.1, 2.5, 8), skinMat);
+            tail1.rotation.x = -Math.PI / 2.2;
+            tail1.position.set(0, 0.5, 1.2);
+            tailGroup.add(tail1);
+            dinoGroup.add(tailGroup);
+
+            const createLeg = (isRight) => {
+                const legGroup = new THREE.Group();
+                const side = isRight ? 1 : -1;
+                legGroup.position.set(0.45 * side, 1.4, 0.2);
+                const thigh = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), skinMat);
+                thigh.scale.set(0.8, 1.3, 0.9);
+                legGroup.add(thigh);
+                const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.12, 1.2, 8), skinMat);
+                shin.position.set(0, -0.7, -0.2);
+                shin.rotation.x = Math.PI / 8;
+                legGroup.add(shin);
+                return legGroup;
+            };
+
+            const leftLeg = createLeg(false);
+            const rightLeg = createLeg(true);
+            dinoGroup.add(leftLeg); dinoGroup.add(rightLeg);
+
+            dinoGroup.scale.set(1.25, 1.25, 1.25);
+            return { mesh: dinoGroup, head: headGroup, tail: tailGroup, leftLeg: leftLeg, rightLeg: rightLeg, jaw: lowerJawGroup };
+        }
+
+        function createJungleTrack() {
+            // Forward Terrain Ground
+            const groundGeo = new THREE.PlaneGeometry(120, 300, 30, 60);
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0x0c2415, roughness: 0.9 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.set(0, 0, -100);
+            scene.add(ground);
+
+            // Mud Road Track
+            const trackGeo = new THREE.PlaneGeometry(32, 300);
+            const trackMat = new THREE.MeshStandardMaterial({ color: 0x1f1910, roughness: 0.95 });
+            const track = new THREE.Mesh(trackGeo, trackMat);
+            track.rotation.x = -Math.PI / 2;
+            track.position.set(0, 0.02, -100);
+            scene.add(track);
+
+            // Side jungle foliage rows
+            for (let z = -200; z < 20; z += 12) {
+                const leftTree = createPalmTree();
+                leftTree.position.set(-18 - Math.random() * 6, 0, z);
+                scene.add(leftTree);
+                environmentObjects.push(leftTree);
+
+                const rightTree = createPalmTree();
+                rightTree.position.set(18 + Math.random() * 6, 0, z);
+                scene.add(rightTree);
+                environmentObjects.push(rightTree);
+            }
+        }
+
+        function createPalmTree() {
+            const treeGroup = new THREE.Group();
+            const trunk = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.3, 0.5, 7, 7),
+                new THREE.MeshStandardMaterial({ color: 0x3d2612 })
+            );
+            trunk.position.y = 3.5;
+            treeGroup.add(trunk);
+
+            const leafMat = new THREE.MeshStandardMaterial({ color: 0x00cc55, side: THREE.DoubleSide });
+            for (let i = 0; i < 6; i++) {
+                const leafGroup = new THREE.Group();
+                leafGroup.position.y = 6.8;
+                leafGroup.rotation.y = (i / 6) * Math.PI * 2;
+
+                const leaf = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 4), leafMat);
+                leaf.position.set(0, 0, 1.8);
+                leaf.rotation.x = Math.PI / 3.5;
+                leafGroup.add(leaf);
+                treeGroup.add(leafGroup);
+            }
+            return treeGroup;
+        }
+
+        // --- CONTROLS & 4 FRONT LANE FIRING ---
+
+        function fireAtLane(laneNumber) {
+            activeTargetLane = laneNumber;
+
+            // Highlight Active UI Lane Tags & Buttons
+            document.querySelectorAll('.lane-tag').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.arcade-red-btn').forEach(b => b.classList.remove('active'));
+
+            const tagEl = document.getElementById(`tag-${laneNumber}`);
+            if (tagEl) tagEl.classList.add('active');
+
+            const btnEl = document.getElementById(`btn-${laneNumber}`);
+            if (btnEl) btnEl.classList.add('active');
+
+            // Swivel Turrets to Aim at Lane X Target Point
+            const targetX = LANE_X[laneNumber];
+            const aimPoint = new THREE.Vector3(targetX, 1.5, -60);
+            
+            leftTurret.lookAt(aimPoint);
+            rightTurret.lookAt(aimPoint);
+
+            // Shoot Twin Lasers down selected lane
+            fireLaser(targetX);
+        }
+
+        function setupControls() {
+            // Push-Buttons Handlers for Lanes 1, 2, 3, 4
+            document.querySelectorAll('.arcade-red-btn').forEach(btn => {
+                btn.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    sfx.init();
+                    const lane = parseInt(btn.getAttribute('data-lane'));
+                    fireAtLane(lane);
+                });
+            });
+
+            // Keyboard numerical shortcuts (1, 2, 3, 4)
+            window.addEventListener('keydown', (e) => {
+                if (['1', '2', '3', '4'].includes(e.key)) {
+                    sfx.init();
+                    fireAtLane(parseInt(e.key));
+                }
+            });
+
+            // Start Buttons
+            document.getElementById('start-btn').addEventListener('click', startGame);
+            document.getElementById('restart-btn').addEventListener('click', startGame);
+        }
+
+        // --- GAME LOGIC & 4 FRONT LANE SPAWNING ---
+
+        function spawnDinosaur() {
+            if (!isPlaying) return;
+
+            // Select 1 of 4 front lanes (1: Far Left, 2: Mid Left, 3: Mid Right, 4: Far Right)
+            const lane = Math.floor(Math.random() * 4) + 1;
+            const targetX = LANE_X[lane];
+            
+            const types = ['yellow', 'blue', 'red'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const dinoData = createRaptorMesh(type);
+
+            const spawnZ = -95 - Math.random() * 30;
+
+            dinoData.mesh.position.set(targetX, 0, spawnZ);
+            // Face directly toward the Jeep windshield
+            dinoData.mesh.lookAt(0, 1.5, 0);
+            scene.add(dinoData.mesh);
+
+            dinosaurs.push({
+                mesh: dinoData.mesh,
+                head: dinoData.head,
+                tail: dinoData.tail,
+                leftLeg: dinoData.leftLeg,
+                rightLeg: dinoData.rightLeg,
+                jaw: dinoData.jaw,
+                hp: type === 'red' ? 100 : 50,
+                speed: 18 + Math.random() * 12,
+                lane: lane,
+                animTime: Math.random() * 10
+            });
+        }
+
+        function fireLaser(targetX) {
+            if (!isPlaying || isOverheated) return;
+
+            laserHeat = Math.min(100, laserHeat + 7);
+            if (laserHeat >= 100) {
+                isOverheated = true;
+                sfx.playHit();
+            }
+
+            sfx.playLaser();
+
+            const targetPos = new THREE.Vector3(targetX, 1.2, -80);
+            
+            const leftOrigin = new THREE.Vector3();
+            leftTurret.getWorldPosition(leftOrigin);
+            const rightOrigin = new THREE.Vector3();
+            rightTurret.getWorldPosition(rightOrigin);
+
+            const spawnLaserBeam = (fromPos) => {
+                const dir = new THREE.Vector3().subVectors(targetPos, fromPos).normalize();
+                const laserGeo = new THREE.CylinderGeometry(0.08, 0.08, 5, 6);
+                const laserMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa });
+                const laser = new THREE.Mesh(laserGeo, laserMat);
+
+                laser.position.copy(fromPos);
+                laser.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+
+                scene.add(laser);
+                lasers.push({
+                    mesh: laser,
+                    dir: dir,
+                    lane: activeTargetLane,
+                    speed: 150,
+                    aliveTime: 0
+                });
+            };
+
+            spawnLaserBeam(leftOrigin);
+            spawnLaserBeam(rightOrigin);
+        }
+
+        function createHitSparks(pos, colorHex = 0xffea00) {
+            for (let i = 0; i < 8; i++) {
+                const p = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.09, 4, 4),
+                    new THREE.MeshBasicMaterial({ color: colorHex })
+                );
+                p.position.copy(pos);
+                const velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 8,
+                    (Math.random() - 0.5) * 8 + 3,
+                    (Math.random() - 0.5) * 8
+                );
+                scene.add(p);
+                particles.push({ mesh: p, vel: velocity, life: 0.3 });
+            }
+        }
+
+        function showDamageText(text, pos3D) {
+            const vector = pos3D.clone().project(camera);
+            const x = (vector.x * .5 + .5) * window.innerWidth;
+            const y = (-(vector.y * .5) + .5) * window.innerHeight;
+
+            const el = document.createElement('div');
+            el.className = 'dmg-text';
+            el.innerText = text;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            
+            document.getElementById('damage-container').appendChild(el);
+            setTimeout(() => el.remove(), 750);
+        }
+
+        // --- ANIMATION & GAME LOOP ---
+
+        function update(delta) {
+            if (!isPlaying) return;
+
+            // Environment Ground Motion Effect
+            const dist = 32 * delta;
+            environmentObjects.forEach((obj) => {
+                obj.position.z += dist;
+                if (obj.position.z > 15) obj.position.z -= 220;
+            });
+
+            // Weapon Heat Cooling
+            if (laserHeat > 0) {
+                laserHeat = Math.max(0, laserHeat - delta * (isOverheated ? 35 : 25));
+                if (isOverheated && laserHeat === 0) isOverheated = false;
+            }
+            document.getElementById('heat-bar').style.width = `${laserHeat}%`;
+
+            // Update Fired Laser Beams
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                const l = lasers[i];
+                l.mesh.position.addScaledVector(l.dir, l.speed * delta);
+                l.aliveTime += delta;
+
+                let hit = false;
+                for (let j = dinosaurs.length - 1; j >= 0; j--) {
+                    const d = dinosaurs[j];
+
+                    // Check lane match & distance collision
+                    if (l.mesh.position.distanceTo(d.mesh.position) < 3.2) {
+                        hit = true;
+                        d.hp -= 40;
+                        createHitSparks(l.mesh.position);
+                        showDamageText('-40', l.mesh.position);
+                        sfx.playHit();
+
+                        if (d.hp <= 0) {
+                            sfx.playRoar();
+                            score += 150;
+                            kills++;
+                            document.getElementById('score-val').innerText = String(score).padStart(6, '0');
+                            scene.remove(d.mesh);
+                            dinosaurs.splice(j, 1);
+                        }
+                        break;
+                    }
+                }
+
+                if (hit || l.aliveTime > 1.2) {
+                    scene.remove(l.mesh);
+                    lasers.splice(i, 1);
+                }
+            }
+
+            // Update Dinosaurs Running straight forward down their designated front lane
+            for (let i = dinosaurs.length - 1; i >= 0; i--) {
+                const d = dinosaurs[i];
+                d.animTime += delta * 10;
+
+                // Move forward towards Jeep (-Z to +Z)
+                d.mesh.position.z += d.speed * delta;
+
+                // Running leg animation & tail swing
+                d.leftLeg.rotation.x = Math.sin(d.animTime) * 0.8;
+                d.rightLeg.rotation.x = -Math.sin(d.animTime) * 0.8;
+                d.tail.rotation.y = Math.sin(d.animTime * 0.5) * 0.3;
+
+                // Reach Jeep Front Windshield
+                if (d.mesh.position.z >= -3.0) {
+                    takeDamage(18);
+                    sfx.playRoar();
+                    createHitSparks(d.mesh.position, 0xff0044);
+                    scene.remove(d.mesh);
+                    dinosaurs.splice(i, 1);
+                }
+            }
+
+            // Particle Updates
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.life -= delta;
+                p.mesh.position.addScaledVector(p.vel, delta);
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
+                }
+            }
+
+            // Spawn waves in front lanes
+            if (dinosaurs.length < 5) {
+                spawnDinosaur();
+            }
+        }
+
+        function takeDamage(amount) {
+            health = Math.max(0, health - amount);
+            document.getElementById('health-bar').style.width = `${health}%`;
+            
+            const vig = document.getElementById('damage-vignette');
+            vig.classList.add('hit');
+            setTimeout(() => vig.classList.remove('hit'), 200);
+
+            if (health <= 0) gameOver();
+        }
+
+        function startGame() {
+            document.getElementById('start-modal').classList.add('hidden');
+            document.getElementById('gameover-modal').classList.add('hidden');
+
+            score = 0; kills = 0; health = 100; laserHeat = 0;
+            document.getElementById('score-val').innerText = '000000';
+            document.getElementById('health-bar').style.width = '100%';
+
+            dinosaurs.forEach(d => scene.remove(d.mesh));
+            lasers.forEach(l => scene.remove(l.mesh));
+            dinosaurs = []; lasers = [];
+
+            fireAtLane(2);
+            isPlaying = true;
+            sfx.init();
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            sfx.playExplosion();
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-kills').innerText = `Dinos Neutralized: ${kills}`;
+            document.getElementById('gameover-modal').classList.remove('hidden');
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+            update(delta);
+            renderer.render(scene, camera);
+        }
+
+        window.onload = () => {
+            initScene();
+            animate();
+        };
+    </script>
+</body>
+</html>
+
